@@ -23,7 +23,7 @@ We will create a variable file for a specific key-value pairs. Then we'll create
 ```  
 This example is a typical start for our plays to manage EC2. It runs on a localhost because most of the EC2 cloud modules run on a managed host which talk to the EC2 API to make changes. Fact gathering is turned off tto speed up the play, but can be turned back on if the need be. The vars/info.yml file contains variables that set the credentials you need to access EC2.    
 Now we will take a look at how to author playbooks and tasks specifically in order to configure a VPC within Amazon. Each of the core task will be performed with the matching Ansible module from the table below:  
-![Module](https://github.com/vidushi-bansal/blob/main/Module.png)  
+![Module](https://github.com/vidushi-bansal/Automating-With-Ansible/blob/main/Module.png)  
 #### Configuring aws VPC  
 Here is a snippet of tasks from a playbook that configures an AWS VPC.  
 ```  
@@ -44,7 +44,7 @@ tasks:
       var: ansibleVPC  
 ```  
 The variables **aws_id**, **aws_key**, and **aws_region** are being loaded from vars/info.yml. A **name** for the VPC and its network (in **cidr_block**) are required parameters. We may set one or more **tags** as key-value pairs. If **tenancy** is **default**, new instances in this VPC will run on a shared hardware by default. If we use **dedicated**, new instances will run on a single-tenant hardware by default. The results of the task are stored in the variable **ansibleVPC**. This includes the resource ID of the VPC you created (in **ansibleVPC['vpc']['id']**). To inspect **ansibleVPC**, **debug** module is used to display its contents.  
-![VPC](https://github.com/vidushi-bansal/blob/main/VPC.png)  
+![VPC](https://github.com/vidushi-bansal/Automating-With-Ansible/blob/main/VPC.png)  
 #### Configuring aws Internet Gateway  
 Next, we need to manage the VPC Internet Gateway. We will use the ec2_vpc_igw to attach an internet gateway to the newly created VPC. We will need the vpc_id parameter that was returned from the previous execution when we created the VPC. We can get the required vpc id from **ansibleVPC.vpc.id**. Let's look at the code snippet for internet gateway.  
 ```  
@@ -64,7 +64,7 @@ Next, we need to manage the VPC Internet Gateway. We will use the ec2_vpc_igw to
     var: ansibleVPC_igw     
 ```  
 **vpc_id** is the VPC's ID, which is retrieved by reading the data in the variable registered when the VPC was created. **state** controls whether the IGW should be present or absent from the VPC. A tag of **Name:ansibleVPC_IGW** is set. We will need the IGW's ID later to create the route table, so we save the results of this task in ansibleVPC_igw. The debug task is not usually needed but will show you the contents of **ansibleVPC_igw**.  
-![IGW](https://github.com/vidushi-bansal/blob/main/Internet_Gateway.png)   
+![IGW](https://github.com/vidushi-bansal/Automating-With-Ansible/blob/main/Internet_Gateway.png)   
 #### Configuring subnets in aws VPC  
 Now we are ready to create a subnet. We will manage our subnets in aws VPCs using **ec2_vpc_subnet** module. This will add a subnet to an existing virtual private cloud. We need to specify the vpc_id returned from the variable from our initial task. Let's look at the code snippet for creating subnets.  
 ```  
@@ -85,7 +85,7 @@ Now we are ready to create a subnet. We will manage our subnets in aws VPCs usin
     var: ansible_public_subnet  
 ```  
 Set the vpc_id parameter to the VPC's ID and **state** to present to specify that this subnet should exist. Next specify the CIDR block. To make it easier to find and manage, set the tag named **ansible_public_subnet**. Use **map_public** to assign instances a public IP address by default.   **public_subnet** contains results we may need later in the play.  
-![SUBNET](https://github.com/vidushi-bansal/blob/main/Subnet.png)  
+![SUBNET](https://github.com/vidushi-bansal/Automating-With-Ansible/blob/main/Subnet.png)  
 #### Configuring route tables for subnets  
 Next we can manage our routing tables. In order for our VPC to route the traffic for the new subnet, it needs to understand how. We will do so by defining a route table entry. We will use the ec2_vpc_route_table module to create this routing table. It also is used to manage the routes in the table and associate them with an IG, or internet gateway. As we've been storing return results in variables throughout each of these tasks, we will need to recover the VPC ID and IGW ID from their respective variables. Let's look at the code snippet for creating route tables.  
 ```  
@@ -112,7 +112,7 @@ Next we can manage our routing tables. In order for our VPC to route the traffic
   
 **vpc_id** must be set to the ID of the VPC for which you are creating the route table. **subnets** is a list of subnet IDs to attach to the route table -- this example gets it from the **public_subnet** variable you registered earlier in the play. **routes** is a list of routes. Each route in the list is a directory:
  **dest** is the network being routed to, 0.0.0.0/0 is the default route. **gateway_id** is the ID of an IGW.
-![Route_table](https://github.com/vidushi-bansal/blob/main/Route_table.png)  
+![Route_table](https://github.com/vidushi-bansal/Automating-With-Ansible/blob/main/Route_table.png)  
 #### Configuring aws security group  
 Lastly, we will need to configure a security group. This will help in managing the firewall rules that pertain to our VPC. Basic parameters for defining a group using the ec2_group module are the name, that provides the name for the new group, region, that specifies the aws region for the group and rules, that defines the firewall inbound rules to enforce. Let's look at the code snippet for ec2-group module.   
 ```  
@@ -137,7 +137,7 @@ Lastly, we will need to configure a security group. This will help in managing t
     sg_id: "{{ ansible_vpc_sg.group_id }}"  
 ```  
 In order to launch an instance in aws we need to assign it to a particular security group. We will give our security group a descriptive name. The security group must be in the same VPC as the resources we want in our project. A security group blocks all traffic by default. If we want to allow the traffic to a port we need to add a rule specifying it.  
-![Security_Group](https://github.com/vidushi-bansal/blob/main/Security_Group.png)  
+![Security_Group](https://github.com/vidushi-bansal/Automating-With-Ansible/blob/main/Security_Group.png)  
   
 #### Configuring aws ec2 instance  
 We will now look at the main module for managing our EC2 instances with Ansible. The ec2 module allows us to create and destroy aws instances. Here are the steps required to create an instance:  
