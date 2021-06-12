@@ -1,0 +1,111 @@
+---
+
+- name: Start
+  hosts: localhost
+  remote_user: Vidushi
+  gather_facts: false
+  vars_files:
+     - vars/info.yml
+  tasks: 
+    - name: Create a VPC with default tenancy
+      ec2_vpc_net:
+        aws_access_key: "{{ aws_id }}"
+        aws_secret_key: "{{ aws_key }}"
+        region: "{{ aws_region }}"
+        name: test_vpc_net
+        cidr_block: 10.10.0.0/16
+        tags:
+          module: ec2_vpc_net
+        tenancy: default
+      register: ansibleVPC
+
+    - name: vpc output
+      debug:
+        var: ansibleVPC
+    
+    - name: Create an internet gateway for ansibleVPC
+      ec2_vpc_igw:
+        aws_access_key: "{{ aws_id }}"
+        aws_secret_key: "{{ aws_key }}"
+        region: "{{ aws_region }}"
+        state: present
+        vpc_id: "{{ ansibleVPC.vpc.id }}"
+        tags:
+          Name: ansibleVPC_IGW
+      register: ansibleVPC_igw
+
+    - name: display ansibleVPC IGW details
+      debug:
+        var: ansibleVPC_igw 
+
+    - name: Create public subnet in "{{ aws_region }}"
+      ec2_vpc_subnet:
+        aws_access_key: "{{ aws_id }}"
+        aws_secret_key: "{{ aws_key }}"
+        region: "{{ aws_region }}"
+        state: present
+        cidr: 10.10.0.0/16
+        vpc_id: "{{ ansibleVPC.vpc.id }}"
+        map_public: yes
+        tags:
+          Name: ansible_public_subnet
+      register: ansible_public_subnet
+
+    - name: show public subnet details
+      debug:
+        var: ansible_public_subnet 
+
+    - name: Create new route table for public subnet
+      ec2_vpc_route_table:
+        aws_access_key: "{{ aws_id }}"
+        aws_secret_key: "{{ aws_key }}"
+        region: "{{ aws_region }}"
+        state: present
+        vpc_id: "{{ ansibleVPC.vpc.id }}"
+        tags:
+          Name: rt_ansibleVPC_PublicSubnet
+        subnets:
+          - "{{ ansible_public_subnet.subnet.id }}"
+        routes: 
+          - dest: 0.0.0.0/0
+            gateway_id: "{{ ansibleVPC_igw.gateway_id }}"
+      register: rt_ansibleVPC_PublicSubnet
+
+    - name: display public route table
+      debug:
+        var: rt_ansibleVPC_PublicSubnet 
+
+    - name: Create a Security Group
+      ec2_group:
+        aws_access_key: "{{ aws_id }}" 
+        aws_secret_key: "{{ aws_key }}"
+        region: "{{ aws_region }}"
+        name: "Ansible Test Security Group"
+        description: "Ansible Test Security Group"
+        vpc_id: "{{ ansibleVPC.vpc.id }}"
+        tags:
+          Name: Ansible Test Security Group
+        rules: 
+          - proto: "tcp"
+            ports: "22"
+            cidr_ip: 0.0.0.0/0
+      register: ansible_vpc_sg
+
+    - name: Set security group ID in variable
+      set_fact:
+        sg_id: "{{ ansible_vpc_sg.group_id }}"
+    - name: Find the AMI
+      ec2_ami_info:
+        aws_access_key: "{{ aws_id }}"
+        aws_secret_key: "{{ aws_key }}"
+        region: "{{ aws_region }}"
+        filters:
+          architecture: x86_64
+          name: ubuntu*20.04*
+      register: amis
+    - name: Show AMI's
+      debug: 
+        var: amis
+    - name: Get the latest one
+      set_fact:
+        latest_ami: "{{ amis.images | sort(attribute='creation_date') | last }}" 
